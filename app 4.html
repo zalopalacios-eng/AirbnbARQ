@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Airbnb × ARQ</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ab:#FF385C;--ab-dk:#D90B63;--ab-lt:#FFF0F3;
+  --arq-bg:#0E1A12;--arq-surface:#142019;--arq-card:#1B2C20;
+  --arq-border:#253B2A;--arq-accent:#B8E04A;--arq-accent2:#6FD98F;
+  --arq-muted:#5A7A62;--arq-text:#E2EEE4;
+  --text:#1A1A1A;--muted:#717171;--border:#E5E5E5;
+  --bg:#F7F7F7;--surface:#FFF;--ok:#00A651;--okbg:#F0FFF5;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;display:flex;background:var(--arq-bg)}
+.shell{display:flex;height:100vh;width:100%;overflow:hidden}
+.panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.divider{width:3px;background:linear-gradient(180deg,var(--ab) 0%,var(--arq-accent) 100%);flex-shrink:0}
+
+/* ═══ MOBILE (celular) — no afecta el layout de escritorio ═══ */
+.mobile-home,.mobile-home-btn{display:none}
+@media (max-width:860px){
+  .shell{width:100%}
+  .divider{display:none}
+  .panel{width:100%}
+
+  body[data-view="home"] .panel-ab,
+  body[data-view="home"] .panel-arq{display:none!important}
+  body[data-view="ab"] .panel-arq{display:none!important}
+  body[data-view="arq"] .panel-ab{display:none!important}
+
+  body[data-view="home"] .mobile-home{
+    display:flex;position:fixed;inset:0;z-index:1000;
+    background:linear-gradient(180deg,#111 0%,#000 100%);
+    flex-direction:column;align-items:center;justify-content:center;gap:16px;
+    padding:24px;
+  }
+  .mobile-home h1{color:#fff;font-family:'DM Sans',sans-serif;font-size:19px;font-weight:700;margin-bottom:8px;text-align:center}
+  .mobile-home button{
+    width:100%;max-width:320px;padding:22px;border-radius:16px;border:none;
+    font-family:'DM Sans',sans-serif;font-weight:700;font-size:17px;cursor:pointer;
+  }
+  .mh-ab{background:var(--ab);color:#fff}
+  .mh-arq{background:var(--arq-accent);color:#0E1A12}
+
+  body[data-view="ab"] .mobile-home-btn,
+  body[data-view="arq"] .mobile-home-btn{
+    display:flex;position:fixed;top:calc(10px + env(safe-area-inset-top));left:10px;z-index:900;
+    width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.55);
+    color:#fff;font-size:18px;align-items:center;justify-content:center;cursor:pointer;
+  }
+}
+
+/* ═══ AIRBNB ═══ */
+.panel-ab{background:var(--bg)}
+.ab-hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.ab-logo{font-weight:700;font-size:18px;color:var(--ab);letter-spacing:-.5px}
+.ab-scroll{flex:1;overflow-y:auto;padding:14px}
+
+/* Calendar nav */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-title{font-size:22px;font-weight:700;color:var(--text);display:flex;gap:6px;align-items:baseline}
+.cal-sel{font-size:22px;font-weight:700;color:var(--text);border:none;background:transparent;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;font-family:inherit;padding:0}
+.cal-arrows{display:flex;gap:5px}
+.cal-arr{width:32px;height:32px;border:1px solid var(--border);border-radius:50%;background:var(--surface);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--text);transition:all .15s}
+.cal-arr:hover{background:var(--bg);border-color:#bbb}
+
+/* Calendar grid */
+.cal-wrap{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:14px}
+.cal-dnames{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)}
+.cal-dname{text-align:center;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:8px 0}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+
+/* Each cell */
+.cc{
+  border:.5px solid var(--border);
+  min-height:84px;
+  padding:5px 0 0 5px;
+  position:relative;
+  cursor:pointer;
+  transition:background .1s;
+  background:var(--surface);
+  user-select:none;
+  overflow:hidden;   /* keep bars clipped to cell */
+}
+.cc:hover{background:#FFF5F6}
+.cc.om{background:#FAFAFA}
+.cc.om .cc-num{color:#ccc}
+.cc.is-today .cc-num{background:var(--ab);color:white;border-radius:50%}
+.cc.sel-a .cc-num,.cc.sel-b .cc-num{background:var(--ab);color:white;border-radius:50%}
+.cc.in-range{background:#FFF0F3}
+.cc-num{
+  font-size:12px;font-weight:500;color:var(--text);
+  width:22px;height:22px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;position:relative;z-index:3;
+}
+
+/*
+  BAR SYSTEM — each cell gets a .bar div at the bottom.
+  The bar div spans full cell width, and we use padding/margin + border-radius
+  to create the visual of a continuous pill across cells.
+
+  data-pos values:
+    s   = start of reservation (first day)
+    m   = middle
+    e   = end (last day before checkout)
+    co  = checkout day (right-half only, faded)
+    se  = single cell (start==end-1 night, checkout next day)
+*/
+.bar{
+  position:absolute;
+  bottom:5px;
+  height:19px;
+  left:0;right:0;
+  display:flex;
+  align-items:center;
+  font-size:8.5px;
+  font-weight:700;
+  color:white;
+  white-space:nowrap;
+  overflow:hidden;
+  z-index:2;
+  pointer-events:none;
+}
+/* CHECK-IN: right half of cell, pill left cap, label visible */
+.bar[data-pos="s"]{
+  left:50%; right:0;
+  border-radius:10px 0 0 10px;
+  padding-left:8px;
+}
+/* Middle days: full width, straight edges both sides */
+.bar[data-pos="m"]{
+  left:0; right:0;
+}
+/* Last occupied day (day BEFORE checkout): full width, straight — same as middle */
+.bar[data-pos="e"]{
+  left:0; right:0;
+}
+/* CHECK-OUT day: left half only, pill right cap, full color */
+.bar[data-pos="co"]{
+  left:0; right:50%;
+  border-radius:0 10px 10px 0;
+}
+/* New-week row continuation: full width, pill left cap */
+.bar[data-pos="sc"]{
+  left:0; right:0;
+  border-radius:10px 0 0 10px;
+}
+/*
+  SHARED DAY (checkout one guest + checkin next guest same day):
+  Both bars sit at bottom:5px on the SAME LINE.
+  co-sh = left half  (checkout, pill right cap)
+  ci-sh = right half (checkin,  pill left cap)
+  They meet in the middle and together fill the full cell width.
+*/
+.bar[data-pos="co-sh"]{
+  left:0; right:50%;
+  border-radius:0 10px 10px 0;
+  bottom:5px;
+}
+.bar[data-pos="ci-sh"]{
+  left:50%; right:0;
+  border-radius:10px 0 0 10px;
+  padding-left:6px;
+  bottom:5px;
+}
+
+/* Occupancy strip */
+.occ-strip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 14px;margin-bottom:13px;display:flex;align-items:center;gap:10px}
+.occ-lbl{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+.occ-track{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.occ-fill{height:100%;background:var(--ab);border-radius:4px;transition:width .4s}
+.occ-pct{font-size:11px;font-weight:700;color:var(--ab);white-space:nowrap}
+.occ-info{font-size:10px;color:var(--muted);white-space:nowrap}
+
+/* Selection hint */
+.sel-hint{font-size:11px;color:var(--ab);font-weight:600;padding:6px 10px;background:var(--ab-lt);border-radius:6px;margin-bottom:9px;display:none}
+.sel-hint.show{display:block}
+
+/* Form */
+.ab-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px;margin-bottom:13px}
+.ab-ct{font-size:13px;font-weight:700;color:var(--text);margin-bottom:11px;display:flex;align-items:center;gap:6px}
+.ab-dot{width:7px;height:7px;border-radius:50%;background:var(--ab);flex-shrink:0}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.fg input,.fg select{border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:13px;color:var(--text);background:var(--surface);font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+.fg input:focus,.fg select:focus{border-color:var(--ab);box-shadow:0 0 0 2px rgba(255,56,92,.1)}
+.swatches{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+.sw{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .15s,border-color .15s}
+.sw:hover{transform:scale(1.2)}
+.sw.on{border-color:#222;transform:scale(1.2)}
+.ab-btn{width:100%;background:var(--ab);color:white;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .15s}
+.ab-btn:hover{background:var(--ab-dk)}
+.sub-info{font-size:11px;color:var(--ok);font-weight:600;margin-top:3px;min-height:16px}
+.ppn-val{font-size:11px;color:var(--muted);margin-top:2px;min-height:14px}
+
+/* Res list */
+.res-row{display:grid;grid-template-columns:1fr auto auto auto auto;gap:7px;align-items:center;padding:9px 15px;border-bottom:1px solid var(--bg);font-size:12px}
+.res-row:last-child{border-bottom:none}
+.res-row:hover{background:#FAFAFA}
+.rname{font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px}
+.rdates{font-size:10px;color:var(--muted);margin-top:2px}
+.nbadge{background:var(--ab-lt);color:var(--ab);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.rprice{font-weight:700;color:var(--text);white-space:nowrap}
+.tag-s{font-size:10px;font-weight:700;color:var(--ok);background:var(--okbg);border:1px solid #A0E0B0;border-radius:5px;padding:2px 7px;white-space:nowrap}
+.tag-p{font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 7px;white-space:nowrap}
+.tag-btn{cursor:pointer;font-family:inherit;transition:all .15s}
+.tag-btn:hover{color:var(--ok);border-color:#A0E0B0;background:var(--okbg)}
+.xb{width:24px;height:24px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .12s}
+.xb:hover{background:#FFF0F2;border-color:var(--ab);color:var(--ab)}
+.ab-empty{text-align:center;padding:22px;color:var(--muted);font-size:12px}
+
+/* ═══ ARQ ═══ */
+.panel-arq{background:var(--arq-bg);color:var(--arq-text)}
+.arq-hdr{background:var(--arq-surface);border-bottom:1px solid var(--arq-border);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
+.arq-logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:var(--arq-accent);letter-spacing:1px}
+.arq-scroll{flex:1;overflow-y:auto;padding:14px}
+
+.arq-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.astat{background:var(--arq-card);border:1px solid var(--arq-border);border-radius:12px;padding:12px}
+.aslbl{font-size:9px;color:var(--arq-muted);font-weight:600;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-family:'Space Mono',monospace}
+.asval{font-size:15px;font-weight:700;font-family:'Space Mono',monospace}
+.asval.ac{color:var(--arq-accent)} .asval.rd{color:#F87171} .asval.gn{color:var(--arq-accent2)}
+.assub{font-size:9px;color:var(--arq-muted);margin-top:2px}
+
+.arq-card{background:var(--arq-card);border:1px solid var(--arq-border);border-radius:12px;padding:13px;margin-bottom:11px}
+.arq-ct{font-size:10px;font-weight:700;color:var(--arq-accent);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:11px;font-family:'Space Mono',monospace;display:flex;align-items:center;gap:6px}
+.arq-ct::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--arq-accent);flex-shrink:0}
+
+.arq-r2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}
+.arq-r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:9px}
+.afg{display:flex;flex-direction:column;gap:4px}
+.afg label{font-size:9px;font-weight:700;color:var(--arq-muted);text-transform:uppercase;letter-spacing:.7px;font-family:'Space Mono',monospace}
+.afg input,.afg select{border:1px solid var(--arq-border);border-radius:7px;padding:8px 9px;font-size:13px;color:var(--arq-text);background:var(--arq-bg);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;width:100%}
+.afg input:focus,.afg select:focus{border-color:var(--arq-accent);box-shadow:0 0 0 2px rgba(184,224,74,.1)}
+.afg select option{background:var(--arq-card)}
+.afg input[readonly]{background:rgba(184,224,74,.06);color:var(--arq-accent);font-family:'Space Mono',monospace;font-weight:700}
+.arq-note{background:rgba(184,224,74,.06);border:1px solid rgba(184,224,74,.18);border-radius:7px;padding:8px 10px;font-size:10px;color:var(--arq-accent);margin-bottom:10px;font-family:'Space Mono',monospace;line-height:1.5}
+.arq-btn{width:100%;background:var(--arq-accent);color:var(--arq-bg);border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:.3px;cursor:pointer;text-transform:uppercase;transition:all .15s}
+.arq-btn:hover{background:#cef55c}
+
+.arq-tabs{display:flex;gap:3px;margin-bottom:11px;background:var(--arq-surface);border:1px solid var(--arq-border);border-radius:9px;padding:3px}
+.atab{flex:1;padding:7px 3px;border-radius:6px;background:transparent;border:none;cursor:pointer;font-size:9px;font-weight:700;font-family:'Space Mono',monospace;color:var(--arq-muted);letter-spacing:.4px;text-transform:uppercase;transition:all .15s}
+.atab.on{background:var(--arq-accent);color:var(--arq-bg)}
+.atp{display:none} .atp.on{display:block}
+
+/* Batch */
+.batch-panel{background:rgba(184,224,74,.04);border:1px solid rgba(184,224,74,.18);border-radius:12px;padding:12px;margin-bottom:11px}
+.batch-t{font-size:10px;font-weight:700;color:var(--arq-accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:9px;font-family:'Space Mono',monospace}
+.batch-list{display:flex;flex-direction:column;gap:4px;margin-bottom:9px;max-height:130px;overflow-y:auto}
+.bi{display:flex;align-items:center;gap:7px;padding:6px 8px;background:var(--arq-card);border:1px solid var(--arq-border);border-radius:7px;cursor:pointer;transition:border-color .12s;user-select:none}
+.bi.on{border-color:var(--arq-accent);background:rgba(184,224,74,.07)}
+.bi input[type=checkbox]{accent-color:var(--arq-accent);width:13px;height:13px;cursor:pointer;flex-shrink:0}
+.bi-name{font-size:11px;color:var(--arq-text);font-weight:500;flex:1;min-width:0}
+.bi-meta{font-size:9px;color:var(--arq-muted);font-family:'Space Mono',monospace}
+.bi-price{font-size:11px;color:var(--arq-accent);font-weight:700;font-family:'Space Mono',monospace;flex-shrink:0}
+.bsumbar{display:flex;align-items:center;gap:7px;padding:7px 9px;background:var(--arq-bg);border:1px solid var(--arq-border);border-radius:7px;margin-bottom:9px;flex-wrap:wrap}
+.bsv{font-size:10px;font-family:'Space Mono',monospace}
+.bsv .l{color:var(--arq-muted)} .bsv .v{color:var(--arq-accent2);font-weight:700} .bsv .r{color:#F87171}
+.bsep{color:var(--arq-border)}
+.bmt{font-size:10px;color:var(--arq-muted);font-family:'Space Mono',monospace;padding:8px 0;text-align:center}
+
+/* Ledger */
+.lhdr{display:grid;gap:5px;padding:5px 7px;font-size:9px;font-weight:700;color:var(--arq-muted);text-transform:uppercase;letter-spacing:.6px;font-family:'Space Mono',monospace}
+.lr{display:grid;gap:5px;padding:8px 7px;border-radius:8px;align-items:center;margin-bottom:3px;background:var(--arq-bg);border:1px solid var(--arq-border);transition:border-color .12s}
+.lr:hover{border-color:#3A5A40}
+.ldate{font-size:10px;color:var(--arq-muted);font-family:'Space Mono',monospace}
+.ldot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin:auto}
+.ldesc{font-size:11px;color:var(--arq-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lusd{font-size:11px;font-weight:700;font-family:'Space Mono',monospace;text-align:right}
+.lusd.in{color:var(--arq-accent2)} .lusd.out{color:#F87171}
+.lars{font-size:10px;color:var(--arq-accent);font-family:'Space Mono',monospace;text-align:right}
+.adel{width:22px;height:22px;border:1px solid var(--arq-border);border-radius:5px;background:none;cursor:pointer;font-size:11px;color:var(--arq-muted);display:flex;align-items:center;justify-content:center;transition:all .12s}
+.adel:hover{background:rgba(248,113,113,.12);border-color:#F87171;color:#F87171}
+.arq-empty{text-align:center;padding:18px;color:var(--arq-muted);font-size:10px;font-family:'Space Mono',monospace}
+
+.ing-cols{grid-template-columns:68px 1fr 56px 36px 56px 22px}
+.ven-cols{grid-template-columns:68px 1fr 62px 70px 22px}
+.led-cols{grid-template-columns:68px 10px 1fr 68px 70px}
+
+.bal-pill{display:inline-flex;align-items:center;background:rgba(111,217,143,.1);border:1px solid rgba(111,217,143,.25);border-radius:20px;padding:3px 11px;font-size:11px;font-weight:700;color:var(--arq-accent2);font-family:'Space Mono',monospace;white-space:nowrap}
+
+.month-strip{background:rgba(184,224,74,.05);border:1px solid rgba(184,224,74,.14);border-radius:10px;padding:9px 12px;margin-bottom:11px;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.ms-item{display:flex;flex-direction:column;gap:1px}
+.ms-lbl{font-size:9px;color:var(--arq-muted);text-transform:uppercase;letter-spacing:.6px;font-family:'Space Mono',monospace}
+.ms-val{font-size:13px;font-weight:700;font-family:'Space Mono',monospace}
+.ms-val.ac{color:var(--arq-accent)} .ms-val.gn{color:var(--arq-accent2)} .ms-val.rd{color:#F87171}
+
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#CCC;border-radius:10px}
+.panel-arq ::-webkit-scrollbar-thumb{background:var(--arq-border)}
+</style>
+</head>
+<body data-view="home">
+<div class="mobile-home">
+  <h1>¿Qué querés ver?</h1>
+  <button class="mh-ab" onclick="mGo('ab')">📅 Reservas Airbnb</button>
+  <button class="mh-arq" onclick="mGo('arq')">📊 Panel ARQ</button>
+</div>
+<button class="mobile-home-btn" onclick="mGo('home')">🏠</button>
+<div class="shell">
+
+<!-- ══════════ AIRBNB ══════════ -->
+<div class="panel panel-ab">
+  <div class="ab-hdr">
+    <div class="ab-logo">airbnb</div>
+    <div style="color:#ddd;margin:0 4px;font-size:16px">×</div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Reservas</div>
+      <div style="font-size:10px;color:var(--muted)">Calendario de ocupación</div>
+    </div>
+    <button onclick="reportAirbnb()" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;background:none;border:1.5px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0" onmouseover="this.style.borderColor='var(--ab)';this.style.color='var(--ab)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Reporte
+    </button>
+    <div id="ab-bal-pill" style="display:inline-flex;align-items:center;background:var(--ab-lt);border:1px solid rgba(255,56,92,.2);border-radius:20px;padding:3px 11px;font-size:11px;font-weight:700;color:var(--ab);white-space:nowrap">Pendiente $0.00</div>
+  </div>
+  <div class="ab-scroll">
+
+    <div class="cal-nav">
+      <div class="cal-title">
+        <select class="cal-sel" id="cal-ms" onchange="onMC()"></select>
+        <select class="cal-sel" id="cal-ys" onchange="onMC()"></select>
+        <span id="cal-month-rev" style="font-size:13px;font-weight:700;color:var(--ab);margin-left:6px;opacity:0"></span>
+      </div>
+      <div class="cal-arrows">
+        <button class="cal-arr" onclick="prevM()">&#8249;</button>
+        <button class="cal-arr" onclick="nextM()">&#8250;</button>
+      </div>
+    </div>
+
+    <!-- Occupancy -->
+    <div class="occ-strip">
+      <div class="occ-lbl" id="occ-lbl">Mayo</div>
+      <div class="occ-track"><div class="occ-fill" id="occ-fill" style="width:0%"></div></div>
+      <div class="occ-pct" id="occ-pct">0%</div>
+      <div class="occ-info" id="occ-info">0/31 días</div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="cal-wrap">
+      <div class="cal-dnames" id="cal-dnames"></div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <div class="sel-hint" id="sel-hint">📅 Ahora hacé click en el check-out</div>
+
+    <!-- Form -->
+    <div class="ab-card">
+      <div class="ab-ct"><div class="ab-dot"></div> Nueva reserva</div>
+      <div class="r2">
+        <div class="fg">
+          <label>Check-in</label>
+          <input type="date" id="ab-ci" oninput="onDates()"/>
+          <div class="sub-info" id="nts-lbl"></div>
+        </div>
+        <div class="fg">
+          <label>Check-out</label>
+          <input type="date" id="ab-co" oninput="onDates()"/>
+          <div class="ppn-val" id="ppn-lbl"></div>
+        </div>
+      </div>
+      <div class="r2" style="grid-template-columns:1fr 76px;margin-bottom:9px">
+        <div class="fg"><label>Huésped</label><input type="text" id="ab-guest" placeholder="Nombre del huésped"/></div>
+        <div class="fg"><label>Pax</label><input type="number" id="ab-pax" placeholder="1" min="1" step="1"/></div>
+      </div>
+      <div class="r2" style="margin-bottom:4px">
+        <div class="fg">
+          <label>Noches (USD)</label>
+          <input type="number" id="ab-price" placeholder="0,00" step="0.01" min="0" oninput="onDates()"/>
+        </div>
+        <div class="fg">
+          <label>Limpieza (USD)</label>
+          <input type="number" id="ab-clean" placeholder="0,00" step="0.01" min="0" oninput="onDates()"/>
+        </div>
+      </div>
+      <div id="ab-total-row" style="display:none;font-size:11px;color:var(--muted);padding:4px 2px 8px;display:flex;gap:12px;align-items:center">
+        <span id="ab-total-lbl" style="font-weight:600;color:var(--text)"></span>
+        <span id="ab-ppn-lbl" style="color:var(--muted)"></span>
+      </div>
+      <div class="swatches" id="swatches"></div>
+      <button class="ab-btn" onclick="addRes()">+ Agregar reserva</button>
+    </div>
+
+    <div class="ab-card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+        <div class="ab-dot"></div>
+        <span style="font-size:13px;font-weight:700;color:var(--text)">Reservas</span>
+        <span id="res-badge" style="margin-left:auto;font-size:10px;color:var(--muted);font-weight:600"></span>
+      </div>
+      <div id="res-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════ ARQ ══════════ -->
+<div class="panel panel-arq">
+  <div class="arq-hdr">
+    <div class="bal-pill" id="bal-pill">Saldo $0,00</div>
+    <button onclick="reportARQ()" style="display:inline-flex;align-items:center;gap:5px;background:none;border:1.5px solid var(--arq-border);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:var(--arq-muted);cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0" onmouseover="this.style.borderColor='var(--arq-accent)';this.style.color='var(--arq-accent)'" onmouseout="this.style.borderColor='var(--arq-border)';this.style.color='var(--arq-muted)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Reporte
+    </button>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--arq-accent);font-family:'Space Grotesk',sans-serif;text-align:right">CUENTA USD</div>
+        <div style="font-size:10px;color:var(--arq-muted);text-align:right">Ingresos · Ventas · Saldo</div>
+      </div>
+      <div style="color:var(--arq-border);margin:0 3px">·</div>
+      <div class="arq-logo">ARQ</div>
+    </div>
+  </div>
+  <div class="arq-scroll">
+
+    <div class="arq-stats">
+      <div class="astat"><div class="aslbl">Ingreso bruto</div><div class="asval ac" id="s-bruto">$0,00</div><div class="assub" id="s-cnt">0 envíos</div></div>
+      <div class="astat"><div class="aslbl">Comisiones ARQ</div><div class="asval rd" id="s-fees">$0,00</div><div class="assub" id="s-fees-sub">$3 por envío</div></div>
+      <div class="astat"><div class="aslbl">Ingreso neto</div><div class="asval gn" id="s-net">$0,00</div><div class="assub" id="s-sub">—</div></div>
+    </div>
+
+    <div class="month-strip" id="mstrip">
+      <button onclick="prevMStrip()" style="background:none;border:1px solid var(--arq-border);border-radius:50%;width:24px;height:24px;color:var(--arq-muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='var(--arq-accent)';this.style.color='var(--arq-accent)'" onmouseout="this.style.borderColor='var(--arq-border)';this.style.color='var(--arq-muted)'">&#8249;</button>
+      <div class="ms-item"><div class="ms-lbl">Mes</div><div class="ms-val ac" id="ms-m">—</div></div>
+      <div style="color:var(--arq-border)">|</div>
+      <div class="ms-item"><div class="ms-lbl">Bruto</div><div class="ms-val" id="ms-b">$0</div></div>
+      <div class="ms-item"><div class="ms-lbl">Comisiones</div><div class="ms-val rd" id="ms-fees">$0</div></div>
+      <div class="ms-item"><div class="ms-lbl">Neto</div><div class="ms-val gn" id="ms-n">$0</div></div>
+      <div class="ms-item"><div class="ms-lbl">Egresos</div><div class="ms-val rd" id="ms-e">$0</div></div>
+      <button onclick="nextMStrip()" style="background:none;border:1px solid var(--arq-border);border-radius:50%;width:24px;height:24px;color:var(--arq-muted);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s" onmouseover="this.style.borderColor='var(--arq-accent)';this.style.color='var(--arq-accent)'" onmouseout="this.style.borderColor='var(--arq-border)';this.style.color='var(--arq-muted)'">&#8250;</button>
+    </div>
+
+    <div class="arq-tabs">
+      <button class="atab on" onclick="swTab('ing',this)">Ingresos</button>
+      <button class="atab" onclick="swTab('ven',this)">Ventas/Pagos</button>
+      <button class="atab" onclick="swTab('led',this)">Movimientos</button>
+    </div>
+
+    <!-- INGRESOS -->
+    <div class="atp on" id="tab-ing">
+      <div class="arq-card">
+        <div class="arq-ct">Registrar transferencia Airbnb → ARQ</div>
+        <div class="arq-r2" style="margin-bottom:9px">
+          <div class="afg"><label>Fecha de transferencia</label><input type="date" id="b-fecha"/></div>
+          <div class="afg"><label>Monto recibido (USD)</label><input type="number" id="b-monto" placeholder="0.00" step="0.01" min="0" oninput="calcNetoIng()"/></div>
+        </div>
+        <div class="afg" style="margin-bottom:9px">
+          <label>Nota (opcional)</label>
+          <input type="text" id="b-nota" placeholder="Ej: Reservas Victoria + Ghisela mayo"/>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--arq-bg);border:1px solid var(--arq-border);border-radius:7px;margin-bottom:9px">
+          <div style="font-size:10px;color:var(--arq-muted);font-family:'Space Mono',monospace">Fee ARQ:</div>
+          <input type="number" id="b-fee" value="3" step="0.01" min="0" style="width:70px;border:1px solid var(--arq-border);border-radius:5px;padding:3px 7px;font-size:12px;font-weight:700;color:#F87171;background:var(--arq-bg);font-family:'Space Mono',monospace;outline:none;text-align:right" oninput="calcNetoIng()"/>
+          <div style="color:var(--arq-border);margin:0 4px">|</div>
+          <div style="font-size:10px;color:var(--arq-muted);font-family:'Space Mono',monospace">Neto:</div>
+          <div style="font-size:11px;font-weight:700;color:var(--arq-accent2);font-family:'Space Mono',monospace" id="ing-neto-preview">$0,00</div>
+        </div>
+        <div class="arq-note">→ ARQ cobra <strong>USD 3</strong> de comisión plana por transferencia recibida.</div>
+        <button class="arq-btn" onclick="addIngreso()">+ REGISTRAR TRANSFERENCIA</button>
+      </div>
+      <div class="arq-card" style="padding:10px">
+        <div class="arq-ct">Historial de transferencias</div>
+        <div id="ing-list"></div>
+      </div>
+    </div>
+
+    <!-- VENTAS -->
+    <div class="atp" id="tab-ven">
+      <div class="arq-card">
+        <div class="arq-ct">Registrar venta o pago</div>
+        <div class="arq-r3">
+          <div class="afg"><label>Fecha</label><input type="date" id="v-fecha"/></div>
+          <div class="afg"><label>Tipo</label>
+            <select id="v-tipo" onchange="onTipo()">
+              <option value="venta">Venta USD → ARS</option>
+              <option value="pago">Pago / Egreso</option>
+              <option value="transf">Transferencia afuera</option>
+            </select>
+          </div>
+          <div class="afg"><label>Monto USD</label><input type="number" id="v-monto" placeholder="0.00" step="0.01" min="0" oninput="calcARS()"/></div>
+        </div>
+        <div id="tc-row" class="arq-r2" style="margin-bottom:9px">
+          <div class="afg"><label>Tipo de cambio</label><input type="number" id="v-tc" placeholder="Ej: 1050" step="1" min="0" oninput="calcARS()"/></div>
+          <div class="afg"><label>ARS resultante</label><input type="text" id="v-ars" readonly placeholder="—"/></div>
+        </div>
+        <div class="afg" style="margin-bottom:9px"><label>Descripción</label><input type="text" id="v-desc" placeholder="Ej: Venta Lemon / Pago expensas"/></div>
+        <button class="arq-btn" onclick="addVenta()">+ REGISTRAR</button>
+      </div>
+      <div class="arq-card" style="padding:10px">
+        <div class="arq-ct">Ventas y pagos</div>
+        <div id="ven-list"></div>
+      </div>
+    </div>
+
+    <!-- LEDGER -->
+    <div class="atp" id="tab-led">
+      <div class="arq-card" style="padding:10px">
+        <div class="arq-ct">Todos los movimientos · cronológico</div>
+        <div id="led-list"></div>
+      </div>
+    </div>
+
+
+  </div>
+</div>
+</div>
+
+<script>
+// ── CONSTANTS ──
+const FEE = 3;
+const PCOLS = ['#FF385C','#00A3FF','#9B59B6','#FF9800','#00BFA5','#E91E63','#3F51B5','#8B5E3C'];
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS = ['LUN.','MAR.','MIÉ.','JUE.','VIE.','SÁB.','DOM.'];
+let selCol = PCOLS[0];
+
+// ── MOBILE: home / pantalla completa ──
+function mGo(view){ document.body.setAttribute('data-view', view); }
+
+// ── STATE ──
+let S = { res:[], ing:[], ven:[], cy: new Date().getFullYear(), cm: new Date().getMonth() };
+
+// ── PERSIST (local) ──
+function load(){ try{ const d=JSON.parse(localStorage.getItem('aqv7')||'{}'); S.res=d.res||[]; S.ing=d.ing||[]; S.ven=d.ven||[]; }catch(e){} }
+function save(){
+  try{
+    localStorage.setItem('aqv7', JSON.stringify({res:S.res,ing:S.ing,ven:S.ven}));
+    localStorage.setItem('aqv7_updatedAt', String(Date.now()));
+  }catch(e){}
+  queueCloudPush();
+}
+
+// ══════════════════════════════════════════════════════════
+// ── SYNC EN LA NUBE (Firebase) ──
+// Para activar la sincronizacion entre tu iPhone y tu compu:
+//   1) Crea un proyecto gratis en https://console.firebase.google.com
+//   2) Activa "Firestore Database" (modo produccion) y "Authentication" > Anonimo
+//   3) Copia tu Web API Key y tu Project ID aca abajo, y pone enabled:true
+// Ver GUIA.md para el paso a paso completo.
+// ══════════════════════════════════════════════════════════
+const CLOUD_CONFIG = {
+  apiKey: "AIzaSyAulEWpWIuzGzs_4Mfto3q53W7WWdaOqZg",
+  projectId: "airbnbarq",
+  enabled: true
+};
+
+let cloudIdToken = null;
+let cloudRefreshToken = null;
+let syncTimer = null;
+
+function saveAuth(idToken, refreshToken, expiresInSec){
+  cloudIdToken = idToken;
+  cloudRefreshToken = refreshToken;
+  const expiresAt = Date.now() + (Number(expiresInSec||3600) * 1000) - 60000; // 1 min de margen
+  localStorage.setItem('aqv7_auth', JSON.stringify({idToken, refreshToken, expiresAt}));
+}
+
+async function cloudRefresh(){
+  if(!cloudRefreshToken) return false;
+  try{
+    const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${CLOUD_CONFIG.apiKey}`,{
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`grant_type=refresh_token&refresh_token=${cloudRefreshToken}`
+    });
+    const d = await r.json();
+    if(d.id_token){ saveAuth(d.id_token, d.refresh_token, d.expires_in); return true; }
+  }catch(e){ console.warn('No se pudo renovar la sesion', e); }
+  return false;
+}
+
+async function cloudSignIn(){
+  if(!CLOUD_CONFIG.enabled) return false;
+  try{
+    const saved = JSON.parse(localStorage.getItem('aqv7_auth')||'null');
+    if(saved && saved.idToken){
+      cloudIdToken = saved.idToken; cloudRefreshToken = saved.refreshToken;
+      if(saved.expiresAt && Date.now() < saved.expiresAt) return true;
+      if(await cloudRefresh()) return true;
+    }
+    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${CLOUD_CONFIG.apiKey}`,{
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({returnSecureToken:true})
+    });
+    const d = await r.json();
+    if(d.idToken){ saveAuth(d.idToken, d.refreshToken, d.expiresIn); return true; }
+  }catch(e){ console.warn('No se pudo conectar con la nube', e); }
+  return false;
+}
+
+function fsDocUrl(){
+  return `https://firestore.googleapis.com/v1/projects/${CLOUD_CONFIG.projectId}/databases/(default)/documents/appdata/main`;
+}
+
+async function cloudPull(){
+  if(!CLOUD_CONFIG.enabled || !cloudIdToken) return null;
+  try{
+    let r = await fetch(fsDocUrl(), { headers:{ Authorization:`Bearer ${cloudIdToken}` } });
+    if(r.status===401){ if(await cloudRefresh()){ r = await fetch(fsDocUrl(), { headers:{ Authorization:`Bearer ${cloudIdToken}` } }); } }
+    if(r.status===404) return null;
+    const d = await r.json();
+    if(!d.fields || !d.fields.data) return null;
+    return {
+      data: JSON.parse(d.fields.data.stringValue),
+      updatedAt: Number(d.fields.updatedAt.integerValue || 0)
+    };
+  }catch(e){ console.warn('cloudPull error', e); return null; }
+}
+
+async function cloudPush(){
+  if(!CLOUD_CONFIG.enabled || !cloudIdToken) return;
+  const body = {
+    fields:{
+      data:{ stringValue: JSON.stringify({res:S.res, ing:S.ing, ven:S.ven}) },
+      updatedAt:{ integerValue: String(Date.now()) }
+    }
+  };
+  try{
+    let r = await fetch(fsDocUrl(), {
+      method:'PATCH',
+      headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${cloudIdToken}` },
+      body: JSON.stringify(body)
+    });
+    if(r.status===401){
+      if(await cloudRefresh()){
+        await fetch(fsDocUrl(), {
+          method:'PATCH',
+          headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${cloudIdToken}` },
+          body: JSON.stringify(body)
+        });
+      }
+    }
+  }catch(e){ console.warn('cloudPush error', e); }
+}
+
+function queueCloudPush(){
+  if(!CLOUD_CONFIG.enabled) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(cloudPush, 1200);
+}
+
+async function applyCloudIfNewer(cloud){
+  if(!cloud) return;
+  const localUpdatedAt = Number(localStorage.getItem('aqv7_updatedAt')||0);
+  if(cloud.updatedAt > localUpdatedAt){
+    S.res = cloud.data.res||[]; S.ing = cloud.data.ing||[]; S.ven = cloud.data.ven||[];
+    localStorage.setItem('aqv7', JSON.stringify({res:S.res,ing:S.ing,ven:S.ven}));
+    localStorage.setItem('aqv7_updatedAt', String(cloud.updatedAt));
+    renderAll();
+  }
+}
+
+async function initCloudSync(){
+  const ok = await cloudSignIn();
+  if(!ok) return;
+  const cloud = await cloudPull();
+  await applyCloudIfNewer(cloud);
+  setInterval(async ()=>{ const c = await cloudPull(); await applyCloudIfNewer(c); }, 15000);
+}
+
+// ── DATE UTILS ──
+function pd(s){ if(!s)return null; const[y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function ts(d){ return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; }
+function p2(n){ return String(n).padStart(2,'0'); }
+function fmt(s){ if(!s)return''; const[y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }
+function fmts(s){ if(!s)return''; const[y,m,d]=s.split('-'); return `${d}/${m}`; }
+function nts(a,b){ return Math.round((pd(b)-pd(a))/864e5); }
+// Format number with comma decimal separator: 196,71
+function fmtN(n,dec=2){ return Number(n).toFixed(dec).replace('.',','); }
+
+// ── SWATCHES ──
+function renderSw(){
+  document.getElementById('swatches').innerHTML = PCOLS.map(c =>
+    `<div class="sw${c===selCol?' on':''}" style="background:${c}" onclick="sc('${c}')"></div>`
+  ).join('');
+}
+function sc(c){ selCol=c; renderSw(); }
+
+// ── CALENDAR SELECTS ──
+function popSel(){
+  const ms = document.getElementById('cal-ms');
+  ms.innerHTML = MONTHS.map((m,i)=>`<option value="${i}"${i===S.cm?' selected':''}>${m}</option>`).join('');
+  const ys = document.getElementById('cal-ys');
+  const cy = new Date().getFullYear();
+  ys.innerHTML = [cy-1,cy,cy+1].map(y=>`<option value="${y}"${y===S.cy?' selected':''}>${y}</option>`).join('');
+}
+function onMC(){ S.cm=+document.getElementById('cal-ms').value; S.cy=+document.getElementById('cal-ys').value; renderCal(); }
+function prevM(){ S.cm--; if(S.cm<0){S.cm=11;S.cy--;} popSel(); renderCal(); }
+function nextM(){ S.cm++; if(S.cm>11){S.cm=0;S.cy++;} popSel(); renderCal(); }
+
+// ── LIVE SELECTION ──
+let cstep=0, cA=null, cB=null;  // cA = checkin, cB = checkout (hover)
+
+// ── CORE CALENDAR RENDER ──
+function renderCal(){
+  document.getElementById('cal-dnames').innerHTML = DAYS.map(d=>`<div class="cal-dname">${d}</div>`).join('');
+
+  const today = ts(new Date());
+  const firstD = new Date(S.cy, S.cm, 1);
+  let dow = firstD.getDay(); dow = dow===0?6:dow-1;
+  const dim = new Date(S.cy, S.cm+1, 0).getDate();
+  const pdim = new Date(S.cy, S.cm, 0).getDate();
+
+  // Build full cell list (always multiple of 7)
+  const cells = [];
+  for(let i=dow-1;i>=0;i--){
+    const dn=pdim-i, pm=S.cm===0?12:S.cm, py=S.cm===0?S.cy-1:S.cy;
+    cells.push({ d:dn, s:`${py}-${p2(pm)}-${p2(dn)}`, om:true });
+  }
+  for(let d=1;d<=dim;d++) cells.push({ d, s:`${S.cy}-${p2(S.cm+1)}-${p2(d)}`, om:false });
+  const rem = cells.length%7===0?0:7-cells.length%7;
+  for(let d=1;d<=rem;d++){
+    const nm=S.cm===11?1:S.cm+2, ny=S.cm===11?S.cy+1:S.cy;
+    cells.push({ d, s:`${ny}-${p2(nm)}-${p2(d)}`, om:true });
+  }
+
+  /*
+    BAR POSITIONS:
+      's'    = check-in day: right half, pill left cap
+      'm'    = middle day: full width, straight
+      'e'    = last occupied (day before checkout): full width, straight (same as m)
+      'co'   = checkout day: left half, pill right cap, full color
+      'sc'   = new-row continuation: full width, pill left cap
+      'co-hi'= checkout on SHARED day (checkout+checkin same day): left half, shifted UP
+      's-lo' = checkin on SHARED day: right half, normal bottom position
+  */
+  function barsForCell(ds, col){
+    const raw = [];
+    S.res.forEach(r => {
+      if(!r.ci || !r.co) return;
+      const isCI   = ds === r.ci;
+      const isCO   = ds === r.co;
+      const inStay = ds > r.ci && ds < r.co;
+      if(!isCI && !isCO && !inStay) return;
+      const tom = ts(new Date(pd(ds).setDate(pd(ds).getDate()+1)));
+      const isLastOcc = (tom === r.co);
+      let pos, label='';
+      if(isCO){
+        pos='co';
+      } else if(isCI){
+        pos='s'; label=r.guest;
+      } else if(inStay){
+        pos = isLastOcc ? 'e' : (col===0 ? 'sc' : 'm');
+      }
+      raw.push({color:r.color, pos, label, isCO, isCI});
+    });
+
+    // Detect shared day: has both a 'co' and a 's' segment → same-line split
+    const hasCO = raw.some(x=>x.isCO);
+    const hasCI = raw.some(x=>x.isCI);
+    if(hasCO && hasCI){
+      return raw.map(x=>{
+        if(x.isCO) return {...x, pos:'co-sh', label:''};
+        if(x.isCI) return {...x, pos:'ci-sh'};
+        return x;
+      });
+    }
+    return raw;
+  }
+
+  // Compute selection range for highlighting
+  const selLo = cA&&cB ? (cA<cB?cA:cB) : cA;
+  const selHi = cA&&cB ? (cA<cB?cB:cA) : cA;
+
+  let html = '';
+  cells.forEach(({d,s,om}, idx) => {
+    const col = idx % 7;
+    let cls = 'cc';
+    if(om) cls += ' om';
+    if(s===today) cls += ' is-today';
+    if(cA){
+      if(s===cA||(cB&&s===cB)) cls += ' sel-a';
+      else if(cB && s>selLo && s<selHi) cls += ' in-range';
+    }
+
+    const segs = barsForCell(s, col);
+    const barsHtml = segs.map(seg =>
+      `<div class="bar" data-pos="${seg.pos}" style="background:${seg.color}">${seg.label}</div>`
+    ).join('');
+
+    html += `<div class="${cls}" data-s="${s}" onclick="onCell('${s}')">`
+           +`<div class="cc-num">${d}</div>`
+           + barsHtml
+           +`</div>`;
+  });
+
+  document.getElementById('cal-grid').innerHTML = html;
+  renderOcc(cells, dim);
+  renderCalMonthRev();
+}
+
+// ── OCCUPANCY ──
+function renderOcc(cells, dim){
+  const mStr = `${S.cy}-${p2(S.cm+1)}`;
+  let occ = 0;
+  for(let d=1;d<=dim;d++){
+    const ds=`${S.cy}-${p2(S.cm+1)}-${p2(d)}`;
+    if(S.res.some(r=>r.ci&&r.co&&ds>=r.ci&&ds<r.co)) occ++;
+  }
+  const pct = Math.round(occ/dim*100);
+  document.getElementById('occ-lbl').textContent = MONTHS[S.cm];
+  document.getElementById('occ-fill').style.width = pct+'%';
+  document.getElementById('occ-pct').textContent = pct+'%';
+  document.getElementById('occ-info').textContent = `${occ}/${dim} días ocupados`;
+}
+
+// ── CELL CLICK ──
+function onCell(d){
+  if(cstep===0){
+    cA=d; cB=null; cstep=1;
+    document.getElementById('ab-ci').value=d;
+    document.getElementById('ab-co').value='';
+    document.getElementById('sel-hint').className='sel-hint show';
+  } else {
+    if(d<=cA){
+      cA=d; document.getElementById('ab-ci').value=d;
+    } else {
+      cB=d; cstep=0;
+      document.getElementById('ab-co').value=d;
+      document.getElementById('sel-hint').className='sel-hint';
+      onDates();
+    }
+  }
+  renderCal();
+}
+
+// ── DATE INPUTS ──
+function onDates(){
+  const ci=document.getElementById('ab-ci').value;
+  const co=document.getElementById('ab-co').value;
+  const nightsAmt=parseFloat(document.getElementById('ab-price').value)||0;
+  const cleanAmt=parseFloat(document.getElementById('ab-clean').value)||0;
+  const total=nightsAmt+cleanAmt;
+  const ntsEl=document.getElementById('nts-lbl');
+  const totalRow=document.getElementById('ab-total-row');
+  const totalLbl=document.getElementById('ab-total-lbl');
+  const ppnLbl=document.getElementById('ab-ppn-lbl');
+  if(ci&&co&&co>ci){
+    const n=nts(ci,co);
+    ntsEl.textContent=`${n} noche${n!==1?'s':''}`;
+    ntsEl.style.display='block';
+    if(total>0){
+      totalRow.style.display='flex';
+      totalLbl.textContent=`Total: $${fmtN(total)}`;
+      ppnLbl.textContent=nightsAmt>0?`· $${fmtN(nightsAmt/n)}/noche`:'';
+    } else { totalRow.style.display='none'; }
+    cA=ci; cB=co;
+  } else {
+    ntsEl.textContent='';
+    if(totalRow) totalRow.style.display='none';
+  }
+  renderCal();
+  renderCalMonthRev();
+}
+function renderCalMonthRev(){
+  const el=document.getElementById('cal-month-rev');
+  if(!el) return;
+  // Count nights actually in this calendar month for each reservation
+  const dim=new Date(S.cy,S.cm+1,0).getDate();
+  let total=0;
+  S.res.forEach(r=>{
+    if(!r.ci||!r.co) return;
+    // nights in this month
+    let nightsInMonth=0;
+    for(let d=1;d<=dim;d++){
+      const ds=`${S.cy}-${p2(S.cm+1)}-${p2(d)}`;
+      if(ds>=r.ci&&ds<r.co) nightsInMonth++;
+    }
+    if(nightsInMonth>0){
+      const totalN=r.nights||nts(r.ci,r.co);
+      const ppn=(r.nightsAmt||r.price)/totalN;
+      // pro-rate nights amount + add cleaning if check-in is in this month
+      total+=ppn*nightsInMonth;
+      const ciMonth=r.ci.substring(0,7);
+      const thisMonth=`${S.cy}-${p2(S.cm+1)}`;
+      if(ciMonth===thisMonth&&(r.cleanAmt||0)>0) total+=r.cleanAmt;
+    }
+  });
+  if(total>0){ el.textContent=`$${fmtN(total)}`; el.style.opacity='1'; }
+  else { el.style.opacity='0'; }
+}
+
+// ── ADD RESERVATION ──
+function addRes(){
+  const ci=document.getElementById('ab-ci').value,co=document.getElementById('ab-co').value;
+  const g=document.getElementById('ab-guest').value.trim();
+  const pax=parseInt(document.getElementById('ab-pax').value)||1;
+  const nightsAmt=parseFloat(document.getElementById('ab-price').value)||0;
+  const cleanAmt=parseFloat(document.getElementById('ab-clean').value)||0;
+  if(!ci||!co){alert('Ingresá check-in y check-out.');return}
+  if(co<=ci){alert('Check-out debe ser posterior.');return}
+  if(!g){alert('Ingresá nombre del huésped.');return}
+  if(nightsAmt<=0){alert('Ingresá el importe de noches.');return}
+  const price=nightsAmt+cleanAmt;
+  S.res.unshift({id:Date.now(),ci,co,guest:g,pax,price,nightsAmt,cleanAmt,color:selCol,nights:nts(ci,co),acreditado:false});
+  save();
+  ['ab-ci','ab-co','ab-guest','ab-pax','ab-price','ab-clean'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('nts-lbl').textContent='';
+  if(document.getElementById('ab-total-row')) document.getElementById('ab-total-row').style.display='none';
+  document.getElementById('sel-hint').className='sel-hint';
+  cA=null;cB=null;cstep=0;
+  renderAll();
+}
+function delRes(id){
+  if(!confirm('¿Eliminar?'))return;
+  S.res=S.res.filter(r=>r.id!==id);save();renderAll();
+}
+function acreditar(id){
+  const r=S.res.find(r=>r.id===id);
+  if(r){ r.acreditado=!r.acreditado; save(); renderAll(); }
+}
+function renderRes(){
+  const l=document.getElementById('res-list');
+  if(!S.res.length){l.innerHTML=`<div class="ab-empty">🏠 Sin reservas todavía.</div>`;return}
+  const sorted=[...S.res].sort((a,b)=>b.ci.localeCompare(a.ci));
+  l.innerHTML=sorted.map(r=>{
+    const n=r.nights||nts(r.ci,r.co);
+    const nightsAmt=r.nightsAmt||r.price;
+    const cleanAmt=r.cleanAmt||0;
+    const ppn=nightsAmt/n;
+    const cleanTag=cleanAmt>0?` + $${fmtN(cleanAmt)} limp.`:'';
+    const paxTag = r.pax>1 ? ` · ${r.pax} huésp.` : '';
+    const statusBtn = r.acreditado
+      ? `<button class="tag-s tag-btn" onclick="acreditar(${r.id})" title="Click para desmarcar">✓ Acreditado</button>`
+      : `<button class="tag-p tag-btn" onclick="acreditar(${r.id})" title="Click para marcar como acreditado">Pendiente</button>`;
+    return `<div class="res-row">
+      <div>
+        <div class="rname"><span style="width:8px;height:8px;border-radius:50%;background:${r.color};display:inline-block;flex-shrink:0"></span>${r.guest}</div>
+        <div class="rdates">${fmt(r.ci)} → ${fmt(r.co)} · $${fmtN(ppn)}/n${cleanTag}${paxTag}</div>
+      </div>
+      <div class="nbadge">${n}n</div>
+      <div class="rprice">$${fmtN(r.price)}</div>
+      ${statusBtn}
+      <button class="xb" onclick="delRes(${r.id})">×</button>
+    </div>`;
+  }).join('');
+  updateABPill();
+}
+function updateABPill(){
+  // Bolsa Airbnb = acreditado − ya transferido a ARQ
+  const acreditado = S.res.filter(r=>r.acreditado).reduce((s,r)=>s+r.price, 0);
+  const enviado    = S.ing.reduce((s,i)=>s+(i.bruto||i.monto+FEE), 0);
+  const bolsa      = acreditado - enviado;
+  const pendCount  = S.res.filter(r=>!r.acreditado).length;
+  // Badge under reservas list
+  const badge = document.getElementById('res-badge');
+  if(badge){
+    const parts=[];
+    if(pendCount) parts.push(`${pendCount} por acreditar`);
+    if(acreditado>0) parts.push(`Bolsa $${bolsa.toFixed(2)}`);
+    badge.textContent=parts.join(' · ');
+  }
+  // Header pill
+  const pill=document.getElementById('ab-bal-pill');
+  if(!pill) return;
+  if(bolsa>0){
+    pill.textContent=`Saldo $${fmtN(bolsa)}`;
+    pill.style.color='var(--ab)';
+    pill.style.background='var(--ab-lt)';
+    pill.style.borderColor='rgba(255,56,92,.2)';
+  } else if(bolsa===0 && acreditado>0){
+    pill.textContent='Saldo $0,00';
+    pill.style.color='var(--ok)';
+    pill.style.background='var(--okbg)';
+    pill.style.borderColor='rgba(0,166,81,.2)';
+  } else if(bolsa<0){
+    pill.textContent=`Saldo -$${fmtN(Math.abs(bolsa))}`;
+    pill.style.color='#D90B63';
+    pill.style.background='var(--ab-lt)';
+    pill.style.borderColor='rgba(255,56,92,.3)';
+  } else {
+    pill.textContent='Sin acreditar';
+    pill.style.color='var(--muted)';
+    pill.style.background='var(--bg)';
+    pill.style.borderColor='var(--border)';
+  }
+}
+
+// ── INGRESO (free-form, no reservation linking) ──
+function calcNetoIng(){
+  const m=parseFloat(document.getElementById('b-monto').value)||0;
+  const fee=parseFloat(document.getElementById('b-fee').value)||0;
+  document.getElementById('ing-neto-preview').textContent=m>0?'$'+fmtN(m-fee):'$0,00';
+}
+function addIngreso(){
+  const fecha=document.getElementById('b-fecha').value;
+  const bruto=parseFloat(document.getElementById('b-monto').value);
+  const fee=parseFloat(document.getElementById('b-fee').value)||0;
+  const nota=document.getElementById('b-nota').value.trim();
+  if(!fecha){alert('Ingresá la fecha.');return}
+  if(!bruto||bruto<=0){alert('Ingresá el monto recibido.');return}
+  const monto=bruto-fee;
+  S.ing.unshift({id:Date.now(),fecha,bruto,monto,fee,desc:nota||'Transferencia Airbnb'});
+  save();
+  document.getElementById('b-fecha').value=ts(new Date());
+  document.getElementById('b-monto').value='';
+  document.getElementById('b-nota').value='';
+  document.getElementById('b-fee').value='3';
+  document.getElementById('ing-neto-preview').textContent='$0,00';
+  renderARQ();
+}
+function delIng(id){
+  S.ing=S.ing.filter(i=>i.id!==id);save();renderARQ();
+}
+function renderIng(){
+  const l=document.getElementById('ing-list');
+  if(!S.ing.length){l.innerHTML=`<div class="arq-empty">// sin transferencias registradas</div>`;return}
+  const sorted=[...S.ing].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  let h=`<div class="lhdr ing-cols"><div>Fecha</div><div>Descripción</div><div style="text-align:right">Bruto</div><div style="text-align:right">Fee</div><div style="text-align:right">Neto</div><div></div></div>`;
+  h+=sorted.map(i=>{
+    const fee=i.fee??FEE;
+    return`<div class="lr ing-cols">
+    <div class="ldate">${fmt(i.fecha)}</div>
+    <div><input style="background:transparent;border:none;border-bottom:1px solid transparent;color:var(--arq-text);font-size:11px;width:100%;outline:none;font-family:'DM Sans',sans-serif;padding:1px 0" value="${(i.desc||'').replace(/"/g,'&quot;')}" onchange="updateIngDesc(${i.id},this.value)" onfocus="this.style.borderBottomColor='var(--arq-accent)'" onblur="this.style.borderBottomColor='transparent'"/></div>
+    <div class="lusd in" style="font-size:10px">$${fmtN(i.bruto||i.monto+fee)}</div>
+    <div style="text-align:right;font-size:10px;color:#F87171;font-family:'Space Mono',monospace">-$${fmtN(fee)}</div>
+    <div class="lusd in">$${fmtN(i.monto)}</div>
+    <div><button class="adel" onclick="delIng(${i.id})">×</button></div>
+  </div>`;}).join('');
+  l.innerHTML=h;
+}
+function updateIngDesc(id,val){ const i=S.ing.find(x=>x.id===id); if(i){i.desc=val;save();} }
+
+// ── VENTAS ──
+function onTipo(){ document.getElementById('tc-row').style.display=document.getElementById('v-tipo').value==='venta'?'grid':'none'; }
+function calcARS(){
+  const m=parseFloat(document.getElementById('v-monto').value)||0;
+  const tc=parseFloat(document.getElementById('v-tc').value)||0;
+  document.getElementById('v-ars').value=m>0&&tc>0?'ARS '+Math.round(m*tc).toLocaleString('es-AR'):'—';
+}
+function addVenta(){
+  const fecha=document.getElementById('v-fecha').value, tipo=document.getElementById('v-tipo').value;
+  const monto=parseFloat(document.getElementById('v-monto').value);
+  const tc=tipo==='venta'?(parseFloat(document.getElementById('v-tc').value)||0):0;
+  const desc=document.getElementById('v-desc').value.trim();
+  if(!fecha){alert('Ingresá fecha.');return}
+  if(!monto||monto<=0){alert('Ingresá monto.');return}
+  S.ven.unshift({id:Date.now(),fecha,tipo,monto,tc,desc});
+  save();['v-monto','v-tc','v-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('v-ars').value='—';
+  renderARQ();
+}
+function delVen(id){ S.ven=S.ven.filter(v=>v.id!==id);save();renderARQ(); }
+const TLBL={venta:'VENTA',pago:'PAGO',transf:'TRANSF.'};
+function renderVen(){
+  const l=document.getElementById('ven-list');
+  if(!S.ven.length){l.innerHTML=`<div class="arq-empty">// sin movimientos</div>`;return}
+  const sorted=[...S.ven].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  let h=`<div class="lhdr ven-cols"><div>Fecha</div><div>Descripción</div><div style="text-align:right">USD</div><div style="text-align:right">ARS</div><div></div></div>`;
+  h+=sorted.map(v=>{
+    const ars=v.tc>0?'ARS '+Math.round(v.monto*v.tc).toLocaleString('es-AR'):'—';
+    const isE=v.tipo!=='venta';
+    return`<div class="lr ven-cols">
+      <div class="ldate">${fmt(v.fecha)}</div>
+      <div style="overflow:hidden">
+        <span style="display:inline-block;background:rgba(${isE?'248,113,113':'184,224,74'},.12);color:${isE?'#F87171':'var(--arq-accent)'};font-size:8px;font-weight:700;padding:1px 5px;border-radius:10px;font-family:'Space Mono',monospace;margin-right:4px;vertical-align:middle">${TLBL[v.tipo]||v.tipo}</span>
+        <input style="background:transparent;border:none;border-bottom:1px solid transparent;color:var(--arq-text);font-size:11px;width:calc(100% - 52px);outline:none;font-family:'DM Sans',sans-serif;padding:1px 0;vertical-align:middle" value="${(v.desc||'').replace(/"/g,'&quot;')}" onchange="updateVenDesc(${v.id},this.value)" onfocus="this.style.borderBottomColor='var(--arq-accent)'" onblur="this.style.borderBottomColor='transparent'"/>
+      </div>
+      <div class="lusd out">-$${fmtN(v.monto)}</div>
+      <div class="lars">${ars}</div>
+      <div><button class="adel" onclick="delVen(${v.id})">×</button></div>
+    </div>`;
+  }).join('');
+  l.innerHTML=h;
+}
+function updateVenDesc(id,val){ const v=S.ven.find(x=>x.id===id); if(v){v.desc=val;save();} }
+
+// ── LEDGER ──
+function renderLed(){
+  const l=document.getElementById('led-list');
+  const items=[];
+  S.ing.forEach(i=>items.push({fecha:i.fecha,tipo:'ingreso',desc:i.desc||'Transferencia ARQ',usd:i.monto,ars:null,srcId:i.id}));
+  S.ven.forEach(v=>items.push({fecha:v.fecha,tipo:v.tipo,desc:(TLBL[v.tipo]||v.tipo)+(v.desc?' · '+v.desc:''),usd:-v.monto,ars:v.tc>0?Math.round(v.monto*v.tc):null,srcId:v.id}));
+  items.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  if(!items.length){l.innerHTML=`<div class="arq-empty">// sin movimientos todavía</div>`;return}
+  const DC={ingreso:'var(--arq-accent2)',venta:'var(--arq-accent)',pago:'#F87171',transf:'#FF9800'};
+  let h=`<div class="lhdr led-cols"><div>Fecha</div><div></div><div>Descripción</div><div style="text-align:right">USD</div><div style="text-align:right">ARS</div></div>`;
+  h+=items.map(it=>`<div class="lr led-cols">
+    <div class="ldate">${fmt(it.fecha)}</div>
+    <div><div class="ldot" style="background:${DC[it.tipo]||'#888'}"></div></div>
+    <div><input style="background:transparent;border:none;border-bottom:1px solid transparent;color:var(--arq-text);font-size:11px;width:100%;outline:none;font-family:'DM Sans',sans-serif;padding:1px 0" value="${(it.desc||'').replace(/"/g,'&quot;')}" onchange="updateMovDesc('${it.tipo}',${it.srcId},this.value)" onfocus="this.style.borderBottomColor='var(--arq-accent)'" onblur="this.style.borderBottomColor='transparent'"/></div>
+    <div class="lusd ${it.usd>0?'in':'out'}">${it.usd>0?'+':''}$${fmtN(Math.abs(it.usd))}</div>
+    <div class="lars">${it.ars!=null?'ARS '+it.ars.toLocaleString('es-AR'):'—'}</div>
+  </div>`).join('');
+  l.innerHTML=h;
+}
+function updateMovDesc(tipo,id,val){
+  if(tipo==='ingreso'){ const i=S.ing.find(x=>x.id===id); if(i){i.desc=val;save();} }
+  else { const v=S.ven.find(x=>x.id===id); if(v){v.desc=val;save();} }
+}
+
+// ── STRIP MONTH STATE ──
+let stripY = new Date().getFullYear();
+let stripM = new Date().getMonth(); // 0-based
+function prevMStrip(){ stripM--; if(stripM<0){stripM=11;stripY--;} renderStripMonth(); }
+function nextMStrip(){ stripM++; if(stripM>11){stripM=0;stripY++;} renderStripMonth(); }
+function renderStripMonth(){
+  const my=`${stripY}-${p2(stripM+1)}`;
+  const mi=S.ing.filter(i=>i.fecha.startsWith(my));
+  const mv=S.ven.filter(v=>v.fecha.startsWith(my));
+  const bruto=mi.reduce((s,i)=>s+(i.bruto||i.monto+(i.fee??FEE)),0);
+  const fees=mi.reduce((s,i)=>s+(i.fee??FEE),0);
+  const neto=mi.reduce((s,i)=>s+i.monto,0);
+  const egr=mv.reduce((s,v)=>s+v.monto,0);
+  document.getElementById('ms-m').textContent=MONTHS[stripM]+' '+stripY;
+  document.getElementById('ms-b').textContent='$'+fmtN(bruto);
+  document.getElementById('ms-fees').textContent='$'+fmtN(fees);
+  document.getElementById('ms-n').textContent='$'+fmtN(neto);
+  document.getElementById('ms-e').textContent='$'+fmtN(egr);
+}
+
+// ── STATS ──
+function renderStats(){
+  const brutoIng=S.ing.reduce((s,i)=>s+(i.bruto||i.monto+(i.fee??FEE)),0);
+  const fees=S.ing.reduce((s,i)=>s+(i.fee??FEE),0);
+  const netIng=S.ing.reduce((s,i)=>s+i.monto,0);
+  const egr=S.ven.reduce((s,v)=>s+v.monto,0);
+  const saldo=netIng-egr;
+  document.getElementById('s-bruto').textContent='$'+fmtN(brutoIng);
+  document.getElementById('s-fees').textContent='$'+fmtN(fees);
+  document.getElementById('s-net').textContent='$'+fmtN(netIng);
+  document.getElementById('s-cnt').textContent=S.ing.length+' envío'+(S.ing.length!==1?'s':'');
+  const arsV=S.ven.filter(v=>v.tipo==='venta'&&v.tc>0).reduce((s,v)=>s+v.monto*v.tc,0);
+  document.getElementById('s-sub').textContent=arsV>0?'ARS '+Math.round(arsV).toLocaleString('es-AR')+' vendidos':'—';
+  const pill=document.getElementById('bal-pill');
+  pill.textContent='Saldo $'+fmtN(saldo);
+  pill.style.color=saldo>=0?'var(--arq-accent2)':'#F87171';
+  pill.style.borderColor=saldo>=0?'rgba(111,217,143,.25)':'rgba(248,113,113,.25)';
+  pill.style.background=saldo>=0?'rgba(111,217,143,.08)':'rgba(248,113,113,.08)';
+  renderStripMonth();
+  updateABPill();
+}
+
+// ── SHARED REPORT HELPERS ──
+function monthlyOccupancy(res){
+  // Returns array of {label, year, month, occ, dim, nights, nightsAmt, cleanAmt, cleanCount, avgPPN}
+  // for last 6 months + current + next 5
+  const now = new Date();
+  const result = [];
+  for(let i = -5; i <= 6; i++){
+    let y = now.getFullYear(), m = now.getMonth() + i;
+    while(m > 11){m -= 12; y++;}
+    while(m < 0){m += 12; y--;}
+    const dim = new Date(y, m+1, 0).getDate();
+    let occ=0, nightsAmt=0, cleanAmt=0, cleanCount=0, nightsCount=0;
+    for(let d=1;d<=dim;d++){
+      const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      if(res.some(r=>r.ci&&r.co&&ds>=r.ci&&ds<r.co)) occ++;
+    }
+    res.forEach(r=>{
+      if(!r.ci||!r.co) return;
+      let nin=0;
+      for(let d=1;d<=dim;d++){
+        const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if(ds>=r.ci&&ds<r.co) nin++;
+      }
+      if(nin>0){
+        const totalN=r.nights||nts(r.ci,r.co);
+        const ppn=(r.nightsAmt||r.price)/totalN;
+        nightsAmt+=ppn*nin;
+        nightsCount+=nin;
+        const ciMon=r.ci.substring(0,7), thisMon=`${y}-${String(m+1).padStart(2,'0')}`;
+        if(ciMon===thisMon&&(r.cleanAmt||0)>0){cleanAmt+=r.cleanAmt;cleanCount++;}
+      }
+    });
+    const avgPPN = nightsCount>0 ? nightsAmt/nightsCount : 0;
+    result.push({
+      label: MONTHS[m].substring(0,3)+' '+y, year:y, month:m,
+      occ, dim, pct:Math.round(occ/dim*100),
+      nightsAmt, cleanAmt, cleanCount, totalRev:nightsAmt+cleanAmt, avgPPN
+    });
+  }
+  return result;
+}
+
+// ── AIRBNB REPORT ──
+function reportAirbnb(){
+  const res = S.res;
+  const monthly = monthlyOccupancy(res);
+  const now = new Date();
+  const curMon = `${now.getFullYear()}-${p2(now.getMonth()+1)}`;
+  const prevMon = (()=>{ let y=now.getFullYear(),m=now.getMonth()-1; if(m<0){m=11;y--;} return `${y}-${p2(m+1)}`; })();
+
+  const resLastMonth = res.filter(r=>r.ci&&r.ci.startsWith(prevMon));
+  const resCurMonth  = res.filter(r=>r.ci&&r.ci.startsWith(curMon));
+
+  const totalNights = res.reduce((s,r)=>s+(r.nights||nts(r.ci,r.co)),0);
+  const totalNightsAmt = res.reduce((s,r)=>s+(r.nightsAmt||r.price),0);
+  const totalClean = res.reduce((s,r)=>s+(r.cleanAmt||0),0);
+  const avgPPN = totalNights>0 ? totalNightsAmt/totalNights : 0;
+
+  // SVG line chart helper — full width, proper axes
+  function lineChart(data, key, color, label, fmt2){
+    const vals = data.map(d=>d[key]);
+    const max = Math.max(...vals, 0.01);
+    const W=740, H=160, padL=48, padR=16, padT=16, padB=36;
+    const iW = W-padL-padR, iH = H-padT-padB;
+    // Y gridlines
+    const yTicks = 4;
+    let grids='', yLabels='';
+    for(let i=0;i<=yTicks;i++){
+      const y = padT + iH - (i/yTicks)*iH;
+      const val = (i/yTicks)*max;
+      grids += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#E8E8E8" stroke-width="1"/>`;
+      yLabels += `<text x="${padL-6}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="9" fill="#AAA">${fmt2(val)}</text>`;
+    }
+    // Points and line
+    const pts = vals.map((v,i)=>{
+      const x = padL + i*iW/(vals.length-1);
+      const y = padT + iH - (v/max)*iH;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const dots = vals.map((v,i)=>{
+      const x = padL + i*iW/(vals.length-1);
+      const y = padT + iH - (v/max)*iH;
+      const isNow = i===5;
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isNow?5:3.5}" fill="${isNow?color:'white'}" stroke="${color}" stroke-width="${isNow?2:2}"/>
+              <title>${data[i].label}: ${fmt2(v)}</title>`;
+    }).join('');
+    // X labels — every label
+    const xlbls = data.map((d,i)=>{
+      const x = padL + i*iW/(vals.length-1);
+      const isNow = i===5;
+      return `<text x="${x.toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9.5" fill="${isNow?color:'#888'}" font-weight="${isNow?'700':'400'}">${d.label}</text>`;
+    }).join('');
+    // Area fill
+    const first=`${padL},${padT+iH}`, last=`${(W-padR).toFixed(1)},${padT+iH}`;
+    return `<div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">${label}</div>
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+        ${grids}
+        <polygon points="${first} ${pts} ${last}" fill="${color}" opacity=".08"/>
+        <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>
+        ${dots}
+        ${yLabels}
+        ${xlbls}
+        <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+iH}" stroke="#DDD" stroke-width="1"/>
+        <line x1="${padL}" y1="${padT+iH}" x2="${W-padR}" y2="${padT+iH}" stroke="#DDD" stroke-width="1"/>
+      </svg>
+    </div>`;
+  }
+
+  function guestTable(list, heading){
+    if(!list.length) return `<p style="color:#999;font-size:11px;padding:8px 0">${heading}: sin reservas</p>`;
+    return `<p style="font-size:11px;font-weight:700;color:#555;margin:10px 0 5px">${heading}</p>
+    <table><tr><th>Huésped</th><th>Pax</th><th>Check-in</th><th>Check-out</th><th>Noches</th><th>Noches $</th><th>Limpieza</th><th>Total</th><th>Estado</th></tr>
+    ${list.sort((a,b)=>b.ci.localeCompare(a.ci)).map(r=>`<tr>
+      <td>${r.guest}</td><td>${r.pax||1}</td><td>${fmt(r.ci)}</td><td>${fmt(r.co)}</td>
+      <td>${r.nights||nts(r.ci,r.co)}</td>
+      <td>$${fmtN(r.nightsAmt||r.price)}</td>
+      <td>${(r.cleanAmt||0)>0?'$'+fmtN(r.cleanAmt):'—'}</td>
+      <td><strong>$${fmtN(r.price)}</strong></td>
+      <td style="color:${r.acreditado?'#00A651':'#999'}">${r.acreditado?'✓ Acreditado':'Pendiente'}</td>
+    </tr>`).join('')}</table>`;
+  }
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+  <title>Reporte Airbnb</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1A1A1A;padding:28px 36px;background:#fff;max-width:900px;margin:0 auto}
+    h1{font-size:20px;font-weight:800;color:#FF385C;letter-spacing:-.3px;margin-bottom:2px}
+    .sub{font-size:11px;color:#999;margin-bottom:24px}
+    h2{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#333;margin:22px 0 10px;padding-bottom:5px;border-bottom:2px solid #FF385C}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px}
+    .kpi{background:#FFF5F6;border:1px solid #FFD0D8;border-radius:8px;padding:11px}
+    .kpi-lbl{font-size:9px;color:#C06070;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;font-weight:700}
+    .kpi-val{font-size:17px;font-weight:800;color:#1A1A1A}
+    .kpi-sub{font-size:10px;color:#999;margin-top:2px}
+    table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px}
+    th{background:#FF385C;color:white;text-align:left;padding:6px 8px;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+    td{padding:6px 8px;border-bottom:1px solid #F5F5F5}
+    tr:nth-child(even) td{background:#FAFAFA}
+    .monthly-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    @media print{body{padding:16px 20px;max-width:100%}}
+  </style></head><body>
+  <h1>airbnb · Reporte de Ocupación y Facturación</h1>
+  <div class="sub">Generado el ${new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+
+  <h2>KPIs globales</h2>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">Noches totales</div><div class="kpi-val">${totalNights}</div><div class="kpi-sub">${res.length} reservas</div></div>
+    <div class="kpi"><div class="kpi-lbl">Precio prom./noche</div><div class="kpi-val">$${fmtN(avgPPN)}</div><div class="kpi-sub">sin limpieza</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total noches facturado</div><div class="kpi-val">$${fmtN(totalNightsAmt)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total limpiezas</div><div class="kpi-val">$${fmtN(totalClean)}</div><div class="kpi-sub">${res.filter(r=>(r.cleanAmt||0)>0).length} cobradas</div></div>
+  </div>
+  <div class="kpi-grid" style="margin-top:8px">
+    <div class="kpi"><div class="kpi-lbl">Pendientes acreditar</div><div class="kpi-val">${res.filter(r=>!r.acreditado).length}</div><div class="kpi-sub">$${fmtN(res.filter(r=>!r.acreditado).reduce((s,r)=>s+r.price,0))}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Acreditados</div><div class="kpi-val">${res.filter(r=>r.acreditado).length}</div><div class="kpi-sub">$${fmtN(res.filter(r=>r.acreditado).reduce((s,r)=>s+r.price,0))}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Ocup. mes actual</div><div class="kpi-val">${monthly[5].pct}%</div><div class="kpi-sub">${monthly[5].occ}/${monthly[5].dim} días</div></div>
+    <div class="kpi"><div class="kpi-lbl">Facturado mes actual</div><div class="kpi-val">$${fmtN(monthly[5].totalRev)}</div><div class="kpi-sub">noches + limpieza</div></div>
+  </div>
+
+  <h2>Evolución mensual</h2>
+  ${lineChart(monthly,'totalRev','#FF385C','Facturación mensual (USD)',v=>'$'+fmtN(v))}
+  ${lineChart(monthly,'pct','#E91E63','Tasa de ocupación (%)',v=>v+'%')}
+
+  <h2>Tabla mensual de ocupación y facturación</h2>
+  <table>
+    <tr><th>Mes</th><th>Días ocup.</th><th>Días libres</th><th>Ocup.%</th><th>Noches $</th><th>Limpiezas $</th><th>Total</th><th>Prom./noche</th></tr>
+    ${monthly.map(m=>`<tr>
+      <td><strong>${m.label}</strong></td>
+      <td style="color:#FF385C;font-weight:700">${m.occ}</td>
+      <td style="color:#999">${m.dim-m.occ}</td>
+      <td>${m.pct}%</td>
+      <td>${m.nightsAmt>0?'$'+fmtN(m.nightsAmt):'—'}</td>
+      <td>${m.cleanAmt>0?'$'+fmtN(m.cleanAmt)+' ('+m.cleanCount+')'  :'—'}</td>
+      <td>${m.totalRev>0?'<strong>$'+fmtN(m.totalRev)+'</strong>':'—'}</td>
+      <td>${m.avgPPN>0?'$'+fmtN(m.avgPPN):'—'}</td>
+    </tr>`).join('')}
+  </table>
+
+  <h2>Detalle por huésped</h2>
+  ${guestTable(resCurMonth, MONTHS[now.getMonth()]+' '+now.getFullYear()+' (mes actual)')}
+  ${guestTable(resLastMonth, MONTHS[now.getMonth()===0?11:now.getMonth()-1]+' '+(now.getMonth()===0?now.getFullYear()-1:now.getFullYear())+' (mes anterior)')}
+
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`;
+
+  const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+}
+
+// ── ARQ REPORT ──
+function reportARQ(){
+  const now = new Date();
+  const netIng = S.ing.reduce((s,i)=>s+i.monto, 0);
+  const brutoIng = S.ing.reduce((s,i)=>s+(i.bruto||i.monto+(i.fee??FEE)), 0);
+  const fees = S.ing.reduce((s,i)=>s+(i.fee??FEE), 0);
+  const egr = S.ven.reduce((s,v)=>s+v.monto, 0);
+  const ventas = S.ven.filter(v=>v.tipo==='venta');
+  const pagos  = S.ven.filter(v=>v.tipo==='pago');
+  const transf = S.ven.filter(v=>v.tipo==='transf');
+  const saldo = netIng - egr;
+  const totalVentasUSD = ventas.reduce((s,v)=>s+v.monto, 0);
+  const totalVentasARS = ventas.filter(v=>v.tc>0).reduce((s,v)=>s+v.monto*v.tc, 0);
+  const pendAcreditar = S.res.filter(r=>!r.acreditado);
+  const pendTotal = pendAcreditar.reduce((s,r)=>s+r.price, 0);
+  const bolsaAcred = S.res.filter(r=>r.acreditado).reduce((s,r)=>s+r.price, 0);
+  const bolsa = bolsaAcred - brutoIng;
+  const avgTC = ventas.filter(v=>v.tc>0).length > 0
+    ? ventas.filter(v=>v.tc>0).reduce((s,v)=>s+v.tc, 0) / ventas.filter(v=>v.tc>0).length
+    : 0;
+
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/>
+  <title>Reporte ARQ</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#E2EEE4;background:#0E1A12;padding:28px 36px;max-width:900px;margin:0 auto}
+    h1{font-size:20px;font-weight:800;color:#B8E04A;letter-spacing:.5px;margin-bottom:2px;font-family:'Courier New',monospace}
+    .sub{font-size:11px;color:#5A7A62;margin-bottom:24px}
+    h2{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:#B8E04A;margin:22px 0 10px;padding-bottom:5px;border-bottom:1px solid #253B2A}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px}
+    .kpi{background:#1B2C20;border:1px solid #253B2A;border-radius:8px;padding:11px}
+    .kpi-lbl{font-size:9px;color:#5A7A62;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;font-weight:700;font-family:'Courier New',monospace}
+    .kpi-val{font-size:17px;font-weight:800;color:#B8E04A;font-family:'Courier New',monospace}
+    .kpi-val.gn{color:#6FD98F} .kpi-val.rd{color:#F87171} .kpi-val.wh{color:#E2EEE4}
+    .kpi-sub{font-size:10px;color:#5A7A62;margin-top:2px}
+    table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px}
+    th{background:#1B2C20;color:#B8E04A;text-align:left;padding:7px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid #253B2A}
+    td{padding:7px 8px;border-bottom:1px solid #1B2C20;color:#C8DEC8}
+    tr:hover td{background:#142019}
+    .in{color:#6FD98F;font-weight:700} .out{color:#F87171;font-weight:700}
+    .tag{display:inline-block;border-radius:10px;padding:2px 7px;font-size:9px;font-weight:700}
+    .t-i{background:rgba(111,217,143,.15);color:#6FD98F}
+    .t-v{background:rgba(184,224,74,.15);color:#B8E04A}
+    .t-p{background:rgba(248,113,113,.15);color:#F87171}
+    .t-t{background:rgba(255,152,0,.15);color:#FFB347}
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .pend-row{background:#1B2C20;border:1px solid #253B2A;border-radius:7px;padding:8px 10px;margin-bottom:4px;display:flex;gap:12px;font-size:11px;color:#A8C4AD}
+    .pend-row strong{color:#E2EEE4}
+    @media print{body{background:#0E1A12!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style></head><body>
+  <h1>ARQ · Reporte de Cuenta USD</h1>
+  <div class="sub">Generado el ${new Date().toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+
+  <h2>Resumen de cuenta</h2>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-lbl">Ingreso bruto total</div><div class="kpi-val">$${fmtN(brutoIng)}</div><div class="kpi-sub">${S.ing.length} transferencias</div></div>
+    <div class="kpi"><div class="kpi-lbl">Comisiones ARQ</div><div class="kpi-val rd">$${fmtN(fees)}</div><div class="kpi-sub">descontadas</div></div>
+    <div class="kpi"><div class="kpi-lbl">Ingreso neto</div><div class="kpi-val gn">$${fmtN(netIng)}</div><div class="kpi-sub">después de fees</div></div>
+    <div class="kpi"><div class="kpi-lbl">Saldo disponible</div><div class="kpi-val" style="color:${saldo>=0?'#6FD98F':'#F87171'}">$${fmtN(saldo)}</div><div class="kpi-sub">neto − egresos</div></div>
+  </div>
+  <div class="kpi-grid" style="margin-top:8px">
+    <div class="kpi"><div class="kpi-lbl">Total egresado</div><div class="kpi-val rd">$${fmtN(egr)}</div><div class="kpi-sub">${S.ven.length} movimientos</div></div>
+    <div class="kpi"><div class="kpi-lbl">Ventas USD→ARS</div><div class="kpi-val wh">$${fmtN(totalVentasUSD)}</div><div class="kpi-sub">ARS ${Math.round(totalVentasARS).toLocaleString('es-AR')}</div></div>
+    <div class="kpi"><div class="kpi-lbl">TC promedio ventas</div><div class="kpi-val wh">${avgTC>0?fmtN(avgTC,0):'—'}</div><div class="kpi-sub">ARS/USD</div></div>
+    <div class="kpi"><div class="kpi-lbl">Bolsa Airbnb</div><div class="kpi-val" style="color:${bolsa>=0?'#6FD98F':'#F87171'}">$${fmtN(bolsa)}</div><div class="kpi-sub">acreditado − enviado</div></div>
+  </div>
+
+  <h2>Transferencias recibidas (${S.ing.length})</h2>
+  <table>
+    <tr><th>Fecha</th><th>Descripción</th><th>Bruto</th><th>Fee</th><th>Neto</th></tr>
+    ${[...S.ing].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(i=>`<tr>
+      <td>${fmt(i.fecha)}</td>
+      <td>${i.desc||'—'}</td>
+      <td class="in">$${fmtN(i.bruto||i.monto+(i.fee??FEE))}</td>
+      <td class="out">-$${fmtN(i.fee??FEE)}</td>
+      <td class="in">$${fmtN(i.monto)}</td>
+    </tr>`).join('')}
+    <tr><td colspan="4" style="text-align:right;font-weight:700;color:#B8E04A">Total neto:</td><td class="in">$${fmtN(netIng)}</td></tr>
+  </table>
+
+  <h2>Ventas USD → ARS (${ventas.length})</h2>
+  <table>
+    <tr><th>Fecha</th><th>Descripción</th><th>USD vendido</th><th>TC</th><th>ARS obtenido</th></tr>
+    ${[...ventas].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(v=>`<tr>
+      <td>${fmt(v.fecha)}</td>
+      <td>${v.desc||'—'}</td>
+      <td class="out">$${fmtN(v.monto)}</td>
+      <td style="color:#B8E04A">${v.tc>0?fmtN(v.tc,0):'—'}</td>
+      <td style="color:#B8E04A">${v.tc>0?'ARS '+Math.round(v.monto*v.tc).toLocaleString('es-AR'):'—'}</td>
+    </tr>`).join('')}
+    ${ventas.length?`<tr><td colspan="2" style="text-align:right;font-weight:700;color:#B8E04A">Totales:</td><td class="out">$${fmtN(totalVentasUSD)}</td><td></td><td style="color:#B8E04A">ARS ${Math.round(totalVentasARS).toLocaleString('es-AR')}</td></tr>`:''}
+  </table>
+
+  ${pagos.length?`<h2>Pagos y egresos (${pagos.length+transf.length})</h2>
+  <table>
+    <tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>USD</th></tr>
+    ${[...pagos,...transf].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(v=>`<tr>
+      <td>${fmt(v.fecha)}</td>
+      <td><span class="tag ${v.tipo==='pago'?'t-p':'t-t'}">${TLBL[v.tipo]||v.tipo}</span></td>
+      <td>${v.desc||'—'}</td>
+      <td class="out">$${fmtN(v.monto)}</td>
+    </tr>`).join('')}
+  </table>`:''}
+
+  <h2>Pendientes de acreditar en Airbnb (${pendAcreditar.length})</h2>
+  ${pendAcreditar.length===0?`<p style="color:#5A7A62;font-size:11px;padding:8px 0">✓ Todas las reservas están acreditadas.</p>`:`
+  <table>
+    <tr><th>Huésped</th><th>Pax</th><th>Check-in</th><th>Check-out</th><th>Noches</th><th>Total</th></tr>
+    ${pendAcreditar.sort((a,b)=>a.ci.localeCompare(b.ci)).map(r=>`<tr>
+      <td>${r.guest}</td><td>${r.pax||1}</td><td>${fmt(r.ci)}</td><td>${fmt(r.co)}</td>
+      <td>${r.nights||nts(r.ci,r.co)}</td>
+      <td style="color:#F87171">$${fmtN(r.price)}</td>
+    </tr>`).join('')}
+    <tr><td colspan="5" style="text-align:right;font-weight:700;color:#F87171">Total pendiente:</td><td style="color:#F87171;font-weight:700">$${fmtN(pendTotal)}</td></tr>
+  </table>`}
+
+  <div style="margin-top:28px;padding:12px;background:#1B2C20;border-radius:8px;display:flex;gap:24px;flex-wrap:wrap">
+    <div><div style="font-size:9px;color:#5A7A62;text-transform:uppercase;letter-spacing:.6px">Ingreso neto total</div><div style="font-size:16px;font-weight:800;color:#6FD98F;font-family:'Courier New',monospace">$${fmtN(netIng)}</div></div>
+    <div><div style="font-size:9px;color:#5A7A62;text-transform:uppercase;letter-spacing:.6px">Egresos totales</div><div style="font-size:16px;font-weight:800;color:#F87171;font-family:'Courier New',monospace">$${fmtN(egr)}</div></div>
+    <div><div style="font-size:9px;color:#5A7A62;text-transform:uppercase;letter-spacing:.6px">Saldo neto ARQ</div><div style="font-size:16px;font-weight:800;font-family:'Courier New',monospace;color:${saldo>=0?'#B8E04A':'#F87171'}">$${fmtN(saldo)}</div></div>
+  </div>
+
+  <div style="margin-top:20px;font-size:10px;color:#2A4A30;border-top:1px solid #1B2C20;padding-top:10px">Reporte generado automáticamente · ARQ × Airbnb Sistema de gestión</div>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`;
+
+  const w=window.open('','_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+}
+
+// ── TABS ──
+function swTab(t,btn){
+  document.querySelectorAll('.atab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.atp').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on'); document.getElementById('tab-'+t).classList.add('on');
+}
+
+// ── FULL RENDER ──
+function renderARQ(){ renderStats(); renderIng(); renderVen(); renderLed(); }
+function renderAll(){ renderCal(); renderRes(); renderARQ(); }
+
+// ── INIT ──
+load();
+const td=ts(new Date());
+document.getElementById('ab-ci').value=td;
+document.getElementById('b-fecha').value=td;
+document.getElementById('v-fecha').value=td;
+onTipo(); popSel(); renderSw(); renderAll();
+initCloudSync();
+</script>
+</body>
+</html>
